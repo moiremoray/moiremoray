@@ -57,9 +57,9 @@ print
 print '    sending pixels forever (control-c to exit)...'
 print
 
-n_pixels = 6272  # number of pixels in the included "moire" layout
-n_struts = 49
-n_pixels_strut = 128
+n_pixels = 1920  # number of pixels in the included "moire" layout
+n_struts = 16
+n_pixels_strut = 60
 fps = 20         # frames per second
 
 
