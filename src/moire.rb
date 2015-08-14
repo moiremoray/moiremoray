@@ -1,5 +1,5 @@
 require 'json'
-require 'pry'
+#require 'pry'
 
 # handle command line
 puts "usage ruby moire.rb filename [output filename]" if ARGV.length == 0
