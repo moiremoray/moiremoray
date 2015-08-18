@@ -8,7 +8,7 @@ import sys
 sys.path.append('vendor/openpixelcontrol/python_clients') # TODO: use dependency management so we don't need to explicitly point the file to dependent vendor soures
 import opc
 import color_utils
-
+from circle import Circle
 
 #-------------------------------------------------------------------------------
 # handle command line
@@ -29,7 +29,9 @@ for n in range(1, len(sys.argv)):
         if sys.argv[n] == '-p':
             program = sys.argv[n + 1]
         elif sys.argv[n] == '-s':
-            speed = float(sys.argv[n + 1]) #  TODO: standardize speed on all programs to be speed of an entire cycle ?
+            speed = float(sys.argv[n + 1])  # TODO: standardize speed on all programs to be speed of an entire cycle ?
+        elif sys.argv[n] == '--count':
+            n_shapes = int(sys.argv[n + 1])
 
 # defaults
 if 'IP_PORT' not in locals():
@@ -38,7 +40,8 @@ if 'program' not in locals():
     program = 'circle'
 if 'speed' not in locals():
     speed = 0
-
+if 'n_shapes' not in locals():
+    n_shapes = 1
 #-------------------------------------------------------------------------------
 # connect to server
 
@@ -136,41 +139,37 @@ def ease_out_quartic(t, b, c, d):
     return -c * (t*t*t*t - 1) + b
 
 
-def circles(cycle_secs):
+def circles(cycle_secs, n_shapes=1):
+    # default params
     if cycle_secs == 0:
         cycle_secs = 4
-    start_time = time.time()
-    t_change_pos = -10000
-    center_x, center_y = 0.5, 0.5
-    r_rand, g_rand, b_rand = 1, 1, 1
-    stroke_width = 0.125
-    last_t_step = start_time + 100000
-    r_max = 0
+
+    shapes = [Circle() for i in range(n_shapes)]
+    for shape in shapes:
+        shape.n_pixels = n_pixels
+        shape.n_struts = n_struts
+        shape.n_pixels_strut = n_pixels_strut
+        shape.cycle_secs = cycle_secs
+
     while True:
-        t = time.time() - start_time
-        t_step = t % cycle_secs
-        t_norm = t_step / cycle_secs
-        rad = t_norm * r_max  # ease_out_quartic(t_step, 0, 1, cycle_secs)
-        if last_t_step > t_step:#- t_change_pos > cycle_secs:  # every cycle_secs...
-            t_change_pos = t
-            center_x, center_y = random.random(), random.random()  # change circle center
-            r_rand, g_rand, b_rand = random.random(), random.random(), random.random()  # adjust color
-            stroke_width = 0.0625 + random.random() * 0.25  # change circle stroke width
-            r_max = max(center_x, center_y, 1 - center_x, 1 - center_y) + stroke_width * 2  # max radius required to get cirlce + stroke beyond visible edges of pixel grid
+        pxl_channels = [0] * n_pixels * 3  # r g b
+        for shape in shapes:
+            shp_pxls = shape.render()
+            pxl_channels = map(lambda px1, px2: px1+px2, pxl_channels, shp_pxls)
+
+        # average
+        n_shapes = float(len(shapes))
+        pxl_channels = [ch / n_shapes for ch in pxl_channels]
+
+        # pixels = zip(pixels[0::3], pixels[1::3], pixels[2::3])  # pack every 3 values into a tuple (r,g,b)
         pixels = []
-        for ii in range(n_pixels):
-            x = int(ii / n_pixels_strut)  # calc x and y coords (x is strut to strut, y is each pixel along strut)
-            y = ii % n_pixels_strut
-            xnorm = x / n_struts  # normalize pixel coordinates
-            ynorm = y / n_pixels_strut
-            dist = math.sqrt(math.pow(center_x - xnorm, 2) + math.pow(center_y - ynorm, 2))  # distance between pixel and circle center
-            intens = 1 - (math.fabs(rad - dist) / stroke_width)  # bright pixels near circle radius, dimmer further away and toward center
-            intens = color_utils.remap(color_utils.clamp(intens, 0, 1), 0, 1, 0, 256)
-            r, g, b = intens * r_rand, intens * g_rand, intens * b_rand
-            pixels.append((r, g, b))
+        for i in xrange(0, len(pxl_channels), 3):
+            pixels.append((pxl_channels[i],
+                           pxl_channels[i+1],
+                           pxl_channels[i+2]))
+
         client.put_pixels(pixels, channel=0)
         time.sleep(1 / fps)
-        last_t_step = t_step
 
 # run
 if 'single' in program:
@@ -180,6 +179,6 @@ elif 'strut' in program:
 elif 'span' in program:
     spanwise(speed)
 elif 'circ' in program:
-    circles(speed)
+    circles(speed, n_shapes)
 else:
     print 'program does not exist'
