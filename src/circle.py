@@ -10,6 +10,9 @@ class Circle:
     n_struts = 0
     n_pixels_strut = 0
     cycle_secs = 0
+    randomize_center = True
+    randomize_stroke = True
+    randomize_cycle = False
 
     def __init__(self):
         self.start_time = time.time()
@@ -28,11 +31,14 @@ class Circle:
         if self.last_t_step > t_step:  # - t_change_pos > cycle_secs:  # every cycle_secs...
             # t_change_pos = t
             # random.seed(self)
-            self.center_x, self.center_y = random.random(), random.random()  # change circle center
+            if self.randomize_center:
+                self.center_x, self.center_y = random.random(), random.random()  # change circle center
             self.r_rand, self.g_rand, self.b_rand = random.random(), random.random(), random.random()  # adjust color
-            self.stroke_width = 0.0625 + random.random() * 0.25  # change circle stroke width
+            if self.randomize_stroke:
+                self.stroke_width = 0.0625# + random.random() * 0.25  # change circle stroke width
             self.r_max = max(self.center_x, self.center_y, 1 - self.center_x, 1 - self.center_y) + self.stroke_width * 2  # max radius required to get cirlce + stroke beyond visible edges of pixel grid
-            self.cycle_secs = 3 + int(random.random() * 5)
+            if self.randomize_cycle:
+                self.cycle_secs = 3 + int(random.random() * 5)
 
         self.pixels = []
         for ii in range(self.n_pixels):
