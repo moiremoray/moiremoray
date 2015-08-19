@@ -32,6 +32,8 @@ for n in range(1, len(sys.argv)):
             speed = float(sys.argv[n + 1])  # TODO: standardize speed on all programs to be speed of an entire cycle ?
         elif sys.argv[n] == '--count':
             n_shapes = int(sys.argv[n + 1])
+        elif sys.argv[n] == '--blend':
+            blend_mode = sys.argv[n + 1]
 
 # defaults
 if 'IP_PORT' not in locals():
@@ -42,6 +44,8 @@ if 'speed' not in locals():
     speed = 0
 if 'n_shapes' not in locals():
     n_shapes = 1
+if 'blend_mode' not in locals():
+    blend_mode = None
 #-------------------------------------------------------------------------------
 # connect to server
 
@@ -139,36 +143,107 @@ def ease_out_quartic(t, b, c, d):
     return -c * (t*t*t*t - 1) + b
 
 
-def circles(cycle_secs, n_shapes=1):
+def pack_pixels(pxl_channels):
+    # pixels = zip(pixels[0::3], pixels[1::3], pixels[2::3])  # pack every 3 values into a tuple (r,g,b)
+    pixels = []
+    for i in xrange(0, len(pxl_channels), 3):
+        pixels.append((pxl_channels[i],
+                       pxl_channels[i+1],
+                       pxl_channels[i+2]))
+    return pixels
+
+
+def blend_average(n_pixels, shapes):
+    pxl_channels = shapes[0].render()
+    for shape in shapes[1:]:
+        shp_pxls = shape.render()
+        pxl_channels = map(lambda px1, px2: px1+px2, pxl_channels, shp_pxls)
+
+    # average
+    n_shapes = float(len(shapes))
+    pxl_channels = [ch / n_shapes for ch in pxl_channels]
+
+    return pack_pixels(pxl_channels)
+
+
+def blend_add(n_pixels, shapes):
+    pxl_channels = shapes[0].render()
+    for shape in shapes[1:]:
+        shp_pxls = shape.render()
+        pxl_channels = map(lambda px1, px2: px1+px2, pxl_channels, shp_pxls)
+
+    return pack_pixels(pxl_channels)
+
+
+def blend_subtract(n_pixels, shapes):
+    pxl_channels = shapes[0].render()
+    for shape in shapes[1:]:
+        shp_pxls = shape.render()
+        pxl_channels = map(lambda px1, px2: px1-px2, pxl_channels, shp_pxls)
+
+    return pack_pixels(pxl_channels)
+
+
+def blend_screen(n_pixels, shapes):
+    pxl_channels = shapes[0].render()
+    for shape in shapes[1:]:
+        shp_pxls = shape.render()
+        pxl_channels = map(lambda px1, px2: 1.0 - (1.0 - px1) * (1.0 - px2), pxl_channels, shp_pxls)
+
+    return pack_pixels(pxl_channels)
+
+
+def overlay_pixels(px1, px2):
+    if px1 < 0.5:
+        return 2.0*px1*px2
+    else:
+        return 1.0 - 2.0*(1.0 - px1)*(1.0 - px2)
+
+
+def blend_overlay(n_pixels, shapes):
+    pxl_channels = shapes[0].render()
+    for shape in shapes[1:]:
+        shp_pxls = shape.render()
+        pxl_channels = map(overlay_pixels, pxl_channels, shp_pxls)
+
+    return pack_pixels(pxl_channels)
+
+
+def blend(mode_str, n_pixels, shapes):
+    mode_funcs = {
+        'avg': blend_average,
+        'add': blend_add,
+        'sub': blend_subtract,
+        'screen': blend_screen,
+        'overlay': blend_overlay,
+    }
+    func = mode_funcs.get(mode_str, blend_average)
+    return func(n_pixels, shapes)
+
+
+def circles(cycle_secs, n_shapes=1, blend_mode=None):
     # default params
     if cycle_secs == 0:
         cycle_secs = 4
 
+    # initialize shapes
     shapes = [Circle() for i in range(n_shapes)]
     for shape in shapes:
+        shape.randomize_cycle = True
         shape.n_pixels = n_pixels
         shape.n_struts = n_struts
         shape.n_pixels_strut = n_pixels_strut
         shape.cycle_secs = cycle_secs
 
+    # render loop
     while True:
-        pxl_channels = [0] * n_pixels * 3  # r g b
-        for shape in shapes:
-            shp_pxls = shape.render()
-            pxl_channels = map(lambda px1, px2: px1+px2, pxl_channels, shp_pxls)
+        # render each shape and apply blend mode
+        pixels = blend(blend_mode, n_pixels, shapes)
 
-        # average
-        n_shapes = float(len(shapes))
-        pxl_channels = [ch / n_shapes for ch in pxl_channels]
-
-        # pixels = zip(pixels[0::3], pixels[1::3], pixels[2::3])  # pack every 3 values into a tuple (r,g,b)
-        pixels = []
-        for i in xrange(0, len(pxl_channels), 3):
-            pixels.append((pxl_channels[i],
-                           pxl_channels[i+1],
-                           pxl_channels[i+2]))
-
+        # write pixels to opc server
         client.put_pixels(pixels, channel=0)
+
+        # wait one frame-sec before rendering again
         time.sleep(1 / fps)
 
 # run
@@ -179,6 +254,6 @@ elif 'strut' in program:
 elif 'span' in program:
     spanwise(speed)
 elif 'circ' in program:
-    circles(speed, n_shapes)
+    circles(speed, n_shapes, blend_mode)
 else:
     print 'program does not exist'

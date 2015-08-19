@@ -31,4 +31,5 @@ client test programs
     src/moire_test.py -p circle # pulse circles of varying stroke width and color through the pixel mesh
     src/moire_test.py -p circle -s 10 # specify how many seconds a complete cycle should take
     src/moire_test.py -p circle --count 3 # specify how many circle should be used
+    src/moire_test.py -p circle --count 2 --blend add # specify blend mode for shape layer compositing
 ```
