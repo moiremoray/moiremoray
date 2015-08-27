@@ -364,7 +364,7 @@ def radial_wave(cycle_secs, blend_mode=None):
     w2 = RadialWave()
     w2.center_x = 0.4
     w2.center_y = 0.4
-    w2.r_rand, w2.g_rand, w2.b_rand = x`random.random(), random.random(), random.random()
+    w2.r_rand, w2.g_rand, w2.b_rand = random.random(), random.random(), random.random()
 
     w3 = RadialWave()
     w3.center_x = 0.5
