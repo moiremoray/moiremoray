@@ -4,16 +4,16 @@ import random
 import color_utils
 
 
-class Circle:
+class RadialWave:
 
     n_pixels = 0
     n_struts = 0
     n_pixels_strut = 0
     cycle_secs = 0
-    randomize_center = True
-    randomize_stroke = True
+    randomize_center = False
+    randomize_stroke = False
     randomize_cycle = False
-    randomize_color = True
+    randomize_color = False
 
     def __init__(self):
         self.start_time = time.time()
@@ -30,7 +30,7 @@ class Circle:
         t_norm = t_step / self.cycle_secs
         rad = t_norm * self.r_max  # ease_out_quartic(t_step, 0, 1, cycle_secs)
         if self.last_t_step > t_step:  # - t_change_pos > cycle_secs:  # every cycle_secs...
-            # t_change_pos = t
+            # t_change_pos = time
             # random.seed(self)
             if self.randomize_center:
                 self.center_x, self.center_y = random.random(), random.random()  # change circle center
@@ -43,15 +43,18 @@ class Circle:
                 self.cycle_secs = 3 + int(random.random() * 5)
 
         self.pixels = []
+        domain = math.pi * 2
         for ii in range(self.n_pixels):
             n_pixels_strut = float(self.n_pixels_strut)
             x = int(ii / n_pixels_strut)  # calc x and y coords (x is strut to strut, y is each pixel along strut)
             y = ii % n_pixels_strut
             xnorm = x / float(self.n_struts)  # normalize pixel coordinates
             ynorm = y / n_pixels_strut
-            dist = math.sqrt(math.pow(self.center_x - xnorm, 2) + math.pow(self.center_y - ynorm, 2))  # distance between pixel and circle center
-            intens = 1 - (math.fabs(rad - dist) / self.stroke_width)  # bright pixels near circle radius, dimmer further away and toward center
-            intens = color_utils.remap(color_utils.clamp(intens, 0, 1), 0, 1, 0, 256)
+            dist = 2 * math.sqrt(math.pow(self.center_x - xnorm, 2) + math.pow(self.center_y - ynorm, 2))  # distance between pixel and circle center
+            intens = math.sin(t_norm * dist * domain * 10)
+            intens = color_utils.remap(intens, -1, 1, 0, 256)
+            # intens = 1 - (math.fabs(rad - dist) / self.stroke_width)  # bright pixels near circle radius, dimmer further away and toward center
+            # intens = color_utils.remap(color_utils.clamp(intens, 0, 1), 0, 1, 0, 256)
             r, g, b = intens * self.r_rand, intens * self.g_rand, intens * self.b_rand
             self.pixels.append(r)
             self.pixels.append(g)

@@ -9,6 +9,8 @@ sys.path.append('vendor/openpixelcontrol/python_clients') # TODO: use dependency
 import opc
 import color_utils
 from circle import Circle
+from wave import Wave
+from radial_wave import RadialWave
 
 #-------------------------------------------------------------------------------
 # handle command line
@@ -68,6 +70,23 @@ n_pixels = 6272  # number of pixels in the included "moire" layout
 n_struts = 49
 n_pixels_strut = 128
 fps = 20         # frames per second
+
+
+def color(cycle_secs):
+    if cycle_secs == 0:
+        cycle_secs = 250
+    start_time = time.time()
+    while True:
+        t = time.time() - start_time
+        t_step = t % cycle_secs
+        t_norm = t_step / cycle_secs
+        ii_pixel = int(t_norm * n_pixels)
+        pixels = []
+        for ii in range(n_pixels):
+            r, g, b = 255, 255, 255
+            pixels.append((r, g, b))
+        client.put_pixels(pixels, channel=0)
+        time.sleep(1 / fps)
 
 
 def single(cycle_secs):
@@ -184,6 +203,15 @@ def blend_subtract(n_pixels, shapes):
     return pack_pixels(pxl_channels)
 
 
+def blend_multiply(px1, px2):
+    pxl_channels = shapes[0].render()
+    for shape in shapes[1:]:
+        shp_pxls = shape.render()
+        pxl_channels = map(lambda px1, px2: px1*px2, pxl_channels, shp_pxls)
+
+    return pack_pixels(pxl_channels)
+
+
 def blend_screen(n_pixels, shapes):
     pxl_channels = shapes[0].render()
     for shape in shapes[1:]:
@@ -214,11 +242,48 @@ def blend(mode_str, n_pixels, shapes):
         'avg': blend_average,
         'add': blend_add,
         'sub': blend_subtract,
+        'mult': blend_multiply,
         'screen': blend_screen,
         'overlay': blend_overlay,
     }
     func = mode_funcs.get(mode_str, blend_average)
     return func(n_pixels, shapes)
+
+
+def circles_opposed(cycle_secs, n_shapes=1, blend_mode=None):
+    # default params
+    if cycle_secs == 0:
+        cycle_secs = 4
+
+    # initialize shapes
+    c1 = Circle()
+    c1.center_x = 0.0
+    c1.center_y = 0.5
+    c1.randomize_center = False
+    c1.randomize_stroke = False
+    c2 = Circle()
+    c2.center_x = 1.0
+    c2.center_y = 0.5
+    c2.randomize_center = False
+    c2.randomize_stroke = False
+    shapes = [c1, c2]
+
+    for shape in shapes:
+        shape.n_pixels = n_pixels
+        shape.n_struts = n_struts
+        shape.n_pixels_strut = n_pixels_strut
+        shape.cycle_secs = cycle_secs
+
+    # render loop
+    while True:
+        # render each shape and apply blend mode
+        pixels = blend(blend_mode, n_pixels, shapes)
+
+        # write pixels to opc server
+        client.put_pixels(pixels, channel=0)
+
+        # wait one frame-sec before rendering again
+        time.sleep(1 / fps)
 
 
 def circles(cycle_secs, n_shapes=1, blend_mode=None):
@@ -228,6 +293,7 @@ def circles(cycle_secs, n_shapes=1, blend_mode=None):
 
     # initialize shapes
     shapes = [Circle() for i in range(n_shapes)]
+
     for shape in shapes:
         shape.randomize_cycle = True
         shape.n_pixels = n_pixels
@@ -246,14 +312,104 @@ def circles(cycle_secs, n_shapes=1, blend_mode=None):
         # wait one frame-sec before rendering again
         time.sleep(1 / fps)
 
+
+def shapes(cycle_secs, blend_mode=None):
+    # default params
+    if cycle_secs == 0:
+        cycle_secs = 4
+
+    # initialize shapes
+    w1 = Wave()
+    w1.center_x = 0.0
+    w1.center_y = 0.5
+    w1.r_rand, w1.g_rand, w1.b_rand = random.random(), random.random(), random.random()
+    w2 = Wave()
+    w2.center_x = 0.2
+    w2.center_y = 0.5
+    w2.r_rand, w2.g_rand, w2.b_rand = random.random(), random.random(), random.random()
+    shapes = [
+        w1,
+        w2,
+    ]
+
+    for shape in shapes:
+        shape.n_pixels = n_pixels
+        shape.n_struts = n_struts
+        shape.n_pixels_strut = n_pixels_strut
+        shape.cycle_secs = cycle_secs
+
+    # render loop
+    while True:
+        # render each shape and apply blend mode
+        pixels = blend(blend_mode, n_pixels, shapes)
+
+        # write pixels to opc server
+        client.put_pixels(pixels, channel=0)
+
+        # wait one frame-sec before rendering again
+        time.sleep(1 / fps)
+
+
+def radial_wave(cycle_secs, blend_mode=None):
+    # default params
+    if cycle_secs == 0:
+        cycle_secs = 4
+
+    # initialize shapes
+    w1 = RadialWave()
+    w1.center_x = 0.5
+    w1.center_y = 0.5
+    w1.r_rand, w1.g_rand, w1.b_rand = random.random(), random.random(), random.random()
+
+    w2 = RadialWave()
+    w2.center_x = 0.4
+    w2.center_y = 0.4
+    w2.r_rand, w2.g_rand, w2.b_rand = random.random(), random.random(), random.random()
+
+    w3 = RadialWave()
+    w3.center_x = 0.5
+    w3.center_y = 0.5
+    w3.r_rand, w3.g_rand, w3.b_rand = random.random(), random.random(), random.random()
+    shapes = [
+        w1,
+        w2,
+        # w3,
+    ]
+
+    for shape in shapes:
+        shape.n_pixels = n_pixels
+        shape.n_struts = n_struts
+        shape.n_pixels_strut = n_pixels_strut
+        shape.cycle_secs = cycle_secs
+    w2.cycle_secs = 5
+
+    # render loop
+    while True:
+        # render each shape and apply blend mode
+        pixels = blend(blend_mode, n_pixels, shapes)
+
+        # write pixels to opc server
+        client.put_pixels(pixels, channel=0)
+
+        # wait one frame-sec before rendering again
+        time.sleep(1 / fps)
+
 # run
-if 'single' in program:
+if 'color' in program:
+    color(speed)
+elif 'single' in program:
     single(speed)
 elif 'strut' in program:
     strutwise(speed)
 elif 'span' in program:
     spanwise(speed)
-elif 'circ' in program:
+elif 'circles_opposed' in program:
+    circles_opposed(speed, n_shapes, blend_mode)
+elif 'circles' in program:
     circles(speed, n_shapes, blend_mode)
+elif 'shapes' in program:
+    shapes(speed, blend_mode)
+elif 'radial_wave' in program:
+    radial_wave(speed, blend_mode)
 else:
     print 'program does not exist'

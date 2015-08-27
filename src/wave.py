@@ -4,16 +4,17 @@ import random
 import color_utils
 
 
-class Circle:
+class Wave:
 
     n_pixels = 0
     n_struts = 0
     n_pixels_strut = 0
     cycle_secs = 0
-    randomize_center = True
-    randomize_stroke = True
+    randomize_center = False
+    randomize_stroke = False
     randomize_cycle = False
-    randomize_color = True
+    randomize_color = False
+    func = math.sin
 
     def __init__(self):
         self.start_time = time.time()
@@ -38,20 +39,23 @@ class Circle:
                 self.r_rand, self.g_rand, self.b_rand = random.random(), random.random(), random.random()  # adjust color
             if self.randomize_stroke:
                 self.stroke_width = 0.0625 + random.random() * 0.15  # change circle stroke width
-            self.r_max = max(self.center_x, self.center_y, 1 - self.center_x, 1 - self.center_y) + self.stroke_width * 2  # max radius required to get cirlce + stroke beyond visible edges of pixel grid
+            self.r_max = max(self.center_x, self.center_y, 1 - self.center_x,   1 - self.center_y) + self.stroke_width * 2  # max radius required to get cirlce + stroke beyond visible edges of pixel grid
             if self.randomize_cycle:
                 self.cycle_secs = 3 + int(random.random() * 5)
 
         self.pixels = []
+        domain = math.pi * 2
         for ii in range(self.n_pixels):
             n_pixels_strut = float(self.n_pixels_strut)
             x = int(ii / n_pixels_strut)  # calc x and y coords (x is strut to strut, y is each pixel along strut)
             y = ii % n_pixels_strut
             xnorm = x / float(self.n_struts)  # normalize pixel coordinates
             ynorm = y / n_pixels_strut
-            dist = math.sqrt(math.pow(self.center_x - xnorm, 2) + math.pow(self.center_y - ynorm, 2))  # distance between pixel and circle center
-            intens = 1 - (math.fabs(rad - dist) / self.stroke_width)  # bright pixels near circle radius, dimmer further away and toward center
-            intens = color_utils.remap(color_utils.clamp(intens, 0, 1), 0, 1, 0, 256)
+            if xnorm < self.center_x:
+                intens = 0
+            else:
+                intens = self.func((self.center_x + ((xnorm + ynorm) / 2.0) + t_norm) * domain * 4)
+                intens = color_utils.remap(intens, -1, 1, 0, 256)
             r, g, b = intens * self.r_rand, intens * self.g_rand, intens * self.b_rand
             self.pixels.append(r)
             self.pixels.append(g)
