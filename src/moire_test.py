@@ -66,9 +66,9 @@ print
 print '    sending pixels forever (control-c to exit)...'
 print
 
-n_pixels = 6272  # number of pixels in the included "moire" layout
-n_struts = 49
-n_pixels_strut = 128
+n_pixels = 1920  # number of pixels in the included "moire" layout
+n_struts = 32
+n_pixels_strut = 60
 fps = 20         # frames per second
 
 
@@ -364,7 +364,7 @@ def radial_wave(cycle_secs, blend_mode=None):
     w2 = RadialWave()
     w2.center_x = 0.4
     w2.center_y = 0.4
-    w2.r_rand, w2.g_rand, w2.b_rand = random.random(), random.random(), random.random()
+    w2.r_rand, w2.g_rand, w2.b_rand = x`random.random(), random.random(), random.random()
 
     w3 = RadialWave()
     w3.center_x = 0.5
