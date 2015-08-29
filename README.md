@@ -22,6 +22,13 @@ start opengl simulator
     vendor/openpixelcontrol/bin/gl_server -l layouts/moire-full-density.json
 ```
 
+download external dependencies (would be better to use a setup script with dependency management)
+
+```
+  mkdir vendor
+  git clone https://github.com/zestyping/openpixelcontrol.git
+```
+
 client test programs
 
 ```

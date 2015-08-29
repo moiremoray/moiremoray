@@ -7,7 +7,7 @@ outpath = File.expand_path (ARGV[1] || File.basename(filepath, ".*") + ".json"),
 
 # read .obj file
 points = [ ]
-groups = { }
+groups = { } # groups contain all LEDs on a single strut, n groups = n struts
 File.open(filepath, 'r') { |f|
   gid = nil
   loop {
@@ -22,13 +22,11 @@ File.open(filepath, 'r') { |f|
   }
 }
 
-# sort points
+# sort each group of points on x-axis
 points = groups.sort_by { |k,v| k }.map { |gid_and_pts|
   pts = gid_and_pts[1]
-  zmax = pts.max_by { |v| v[:point][2] } 
-  xmin = pts.min_by { |v| v[:point][0] }
   xmax = pts.max_by { |v| v[:point][0] }
-  pts.sort_by { |v| # sort on z-axis
+  pts.sort_by { |v| # find furthest "right" LED position in order that all LEDs follow in order right to left along their strut
     pt = v[:point]
     xmax[:point][0] - pt[0]
   }
@@ -36,7 +34,7 @@ points = groups.sort_by { |k,v| k }.map { |gid_and_pts|
 
 # normalize and scale
 max_v = points.map { |h| h[:point] }.flatten.map { |v| v.abs }.max / 10
-points = points.map { |h| { point: h[:point].map { |v| v / max_v } } }
+points = points.map { |h| { point: h[:point].map { |v| v / max_v } } } # normalize each point (divide x,y,z by max)
 json = JSON.pretty_generate points
 
 # write .json file
